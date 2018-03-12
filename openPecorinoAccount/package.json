@@ -10,7 +10,7 @@
   "author": "Tetsu Yamazaki <yamazaki@motionpicture.jp>",
   "license": "UNLICENSED",
   "dependencies": {
-    "@motionpicture/pecorino-domain": "0.0.0-alpha.10"
+    "@motionpicture/pecorino-domain": "0.0.0-alpha.12"
   },
   "devDependencies": {
     "tslint": "^5.9.1",
