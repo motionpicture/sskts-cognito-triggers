@@ -1,6 +1,7 @@
 process.env.PATH = `${process.env.PATH}: ${process.env.LAMBDA_TASK_ROOT}`;
 
 import * as pecorino from '@motionpicture/pecorino-domain';
+import * as AWS from 'aws-sdk';
 
 import mongooseConnectionOptions from './mongooseConnectionOptions';
 
@@ -38,7 +39,7 @@ export const handler = async (event: any, context: any) => {
         const INITIAL_BALANCE = (process.env.INITIAL_BALANCE !== undefined) ? parseInt(process.env.INITIAL_BALANCE, 10) : 0;
         await pecorino.mongoose.connect(<string>process.env.MONGOLAB_URI, mongooseConnectionOptions)
         const accountRepo = new pecorino.repository.Account(pecorino.mongoose.connection);
-        await pecorino.service.account.openIfNotExists({
+        const account = await pecorino.service.account.openIfNotExists({
             id: `sskts-${event.userName}`,
             name: `${event.request.userAttributes.family_name} ${event.request.userAttributes.given_name}`,
             initialBalance: INITIAL_BALANCE
@@ -46,8 +47,31 @@ export const handler = async (event: any, context: any) => {
 
         await pecorino.mongoose.disconnect();
 
-        // Return result to Cognito
-        context.done(null, event);
+        const cognitoIdentityServiceProvider = new AWS.CognitoIdentityServiceProvider({
+            apiVersion: 'latest',
+            region: 'ap-northeast-1'
+        });
+
+        cognitoIdentityServiceProvider.adminUpdateUserAttributes(
+            {
+                UserPoolId: event.userPoolId,
+                Username: event.userName,
+                UserAttributes: [
+                    {
+                        Name: 'custom:pecorinoAccountId',
+                        Value: account.id
+                    }
+                ]
+            },
+            (err) => {
+                if (err instanceof Error) {
+                    context.done(err, event);
+                } else {
+                    // Return result to Cognito
+                    context.done(null, event);
+                }
+            });
+
     } catch (error) {
         context.done(error, event);
     }
